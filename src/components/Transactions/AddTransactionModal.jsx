@@ -92,14 +92,14 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400">Дата</label>
               <input
                 type="date"
                 value={form.date}
                 onChange={(e) => handleChange('date', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               />
             </div>
             <div className="space-y-1.5">
@@ -107,7 +107,7 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
               <select
                 value={form.type}
                 onChange={(e) => handleChange('type', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               >
                 {TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -118,14 +118,14 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400">Актив</label>
               <input
                 type="text"
                 value={form.asset_name}
                 onChange={(e) => handleChange('asset_name', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               />
             </div>
             <div className="space-y-1.5">
@@ -134,19 +134,19 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
                 type="text"
                 value={form.ticker}
                 onChange={(e) => handleChange('ticker', e.target.value.toUpperCase())}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 font-medium"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 font-medium"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400">Количество</label>
               <input
                 type="number"
                 value={form.quantity}
                 onChange={(e) => handleChange('quantity', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
               />
             </div>
             <div className="space-y-1.5">
@@ -155,7 +155,7 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
                 type="number"
                 value={form.price}
                 onChange={(e) => handleChange('price', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
               />
             </div>
             <div className="space-y-1.5">
@@ -164,18 +164,18 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
                 type="number"
                 value={form.commission}
                 onChange={(e) => handleChange('commission', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400">Валюта</label>
               <select
                 value={form.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>

@@ -70,14 +70,14 @@ export function DividendModal({ open, onClose, onSubmit, initialData, loading })
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400">Дата</label>
               <input
                 type="date"
                 value={form.date}
                 onChange={(e) => handleChange('date', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               />
             </div>
             <div className="space-y-1.5">
@@ -85,7 +85,7 @@ export function DividendModal({ open, onClose, onSubmit, initialData, loading })
               <select
                 value={form.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               >
                 {CURRENCIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -94,14 +94,14 @@ export function DividendModal({ open, onClose, onSubmit, initialData, loading })
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400">Тикер</label>
               <input
                 type="text"
                 value={form.ticker}
                 onChange={(e) => handleChange('ticker', e.target.value.toUpperCase())}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 font-medium"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 font-medium"
               />
             </div>
             <div className="space-y-1.5">
@@ -110,12 +110,12 @@ export function DividendModal({ open, onClose, onSubmit, initialData, loading })
                 type="text"
                 value={form.asset_name}
                 onChange={(e) => handleChange('asset_name', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400">Сумма (брутто)</label>
               <input
@@ -123,7 +123,7 @@ export function DividendModal({ open, onClose, onSubmit, initialData, loading })
                 step="0.01"
                 value={form.amount}
                 onChange={(e) => handleChange('amount', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
               />
             </div>
             <div className="space-y-1.5">
@@ -133,7 +133,7 @@ export function DividendModal({ open, onClose, onSubmit, initialData, loading })
                 step="0.01"
                 value={form.tax}
                 onChange={(e) => handleChange('tax', e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
               />
             </div>
           </div>

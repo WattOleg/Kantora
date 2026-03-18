@@ -144,16 +144,16 @@ function AppShell() {
   return (
     <div className="min-h-screen text-slate-100 flex flex-col bg-[radial-gradient(ellipse_120%_80%_at_0%_0%,#1a2332_0%,#0f1419_45%,#0a0e14_100%)]">
       <header className="bg-[#0a0e14]/90 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-6xl mx-auto safe-px py-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center overflow-hidden shadow-lg">
+        <div className="max-w-6xl mx-auto safe-px py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white flex items-center justify-center overflow-hidden shadow-lg">
               <img src="/logo-Kantora.png" alt="Kantora" className="w-full h-full object-contain p-1" />
             </div>
             <span className="text-base font-semibold text-white tracking-tight">Kantora</span>
           </div>
-          <nav className="flex items-center gap-0.5 p-1 rounded-2xl bg-white/[0.06] overflow-x-auto shrink-0 min-w-0">
+          <nav className="flex gap-0.5 p-1 rounded-2xl bg-white/[0.06] w-full sm:w-auto min-w-0">
             <button
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex-1 sm:flex-initial px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'dashboard'
                   ? 'bg-[#0075EB] text-white shadow'
                   : 'text-slate-400 hover:text-white'
@@ -163,7 +163,7 @@ function AppShell() {
               Дашборд
             </button>
             <button
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex-1 sm:flex-initial px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'transactions'
                   ? 'bg-[#0075EB] text-white shadow'
                   : 'text-slate-400 hover:text-white'
@@ -173,7 +173,7 @@ function AppShell() {
               Сделки
             </button>
             <button
-              className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex-1 sm:flex-initial px-2 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === 'dividends'
                   ? 'bg-[#0075EB] text-white shadow'
                   : 'text-slate-400 hover:text-white'

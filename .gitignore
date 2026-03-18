@@ -1,24 +1,4 @@
-# Dependencies
 node_modules/
-
-# Build
-dist/
-build/
-
-# Env
 .env
-.env.local
-.env.*.local
-
-# IDE / OS
-.idea/
-.vscode/
-*.swp
+dist/
 .DS_Store
-
-# Logs
-*.log
-npm-debug.log*
-
-# Optional
-*.local

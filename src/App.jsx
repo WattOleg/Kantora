@@ -144,7 +144,7 @@ function AppShell() {
   return (
     <div className="min-h-screen text-slate-100 flex flex-col bg-[radial-gradient(ellipse_120%_80%_at_0%_0%,#1a2332_0%,#0f1419_45%,#0a0e14_100%)]">
       <header className="bg-[#0a0e14]/90 backdrop-blur-md border-b border-white/5">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+        <div className="max-w-6xl mx-auto safe-px py-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center overflow-hidden shadow-lg">
               <img src="/logo-Kantora.png" alt="Kantora" className="w-full h-full object-contain p-1" />
@@ -187,7 +187,7 @@ function AppShell() {
       </header>
 
       <main className="flex-1 w-full">
-        <div className="max-w-6xl mx-auto px-4 py-4 space-y-4 sm:space-y-5">
+        <div className="max-w-6xl mx-auto safe-px py-4 space-y-4 sm:space-y-5">
           {error && (
             <div className="rounded-2xl bg-red-500/10 border border-red-500/30 text-red-200 text-sm px-4 py-3">
               {error}

@@ -25,3 +25,9 @@ select {
   padding-right: 2.5rem;
 }
 
+/* 16px по краям + учёт safe-area на телефонах (iPhone notch) */
+.safe-px {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+

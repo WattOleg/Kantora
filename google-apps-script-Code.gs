@@ -80,6 +80,10 @@ function doPost(e) {
         recalculatePortfolio_();
         recalculateSummary_();
         return jsonResponse({ status: 'ok' });
+      case 'syncPortfolioPrices':
+        syncPortfolioPrices_();
+        recalculateSummary_();
+        return jsonResponse({ status: 'ok' });
       default:
         return jsonError('Unknown action: ' + action, 400);
     }

@@ -15,8 +15,9 @@ export function usePortfolio() {
     try {
       try {
         await syncPortfolioPrices();
-      } catch {
+      } catch (e) {
         // Fallback to existing saved prices if market quote API is unavailable.
+        console.warn('Price sync failed:', e?.message || e);
       }
       const data = await getData();
       setPortfolio(Array.isArray(data.portfolio) ? data.portfolio : []);

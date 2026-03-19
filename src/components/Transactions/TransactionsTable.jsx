@@ -1,4 +1,9 @@
 export function TransactionsTable({ transactions, onDelete, onEdit }) {
+  const formatPrice = (value) => {
+    const num = Number(value || 0);
+    return num.toFixed(10).replace(/\.?0+$/, '');
+  };
+
   return (
     <div className="rounded-2xl bg-white/[0.03] backdrop-blur-sm overflow-hidden">
       <div className="overflow-x-auto">
@@ -31,7 +36,7 @@ export function TransactionsTable({ transactions, onDelete, onEdit }) {
                 <td className="px-3 sm:px-4 py-2.5 sm:py-3 font-semibold text-[#0075EB]">{t.ticker}</td>
                 <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-right tabular-nums">{t.quantity}</td>
                 <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-right tabular-nums">
-                  {Number(t.price || 0).toFixed(2)}
+                  {formatPrice(t.price)}
                 </td>
                 <td className="px-3 sm:px-4 py-2.5 sm:py-3 text-right tabular-nums">
                   {Number(t.total || 0).toFixed(2)}

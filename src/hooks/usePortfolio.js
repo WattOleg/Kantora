@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getData } from '../api/sheets';
+import { getData, syncPortfolioPrices } from '../api/sheets';
 
 export function usePortfolio() {
   const [portfolio, setPortfolio] = useState([]);
@@ -13,6 +13,11 @@ export function usePortfolio() {
     setLoading(true);
     setError(null);
     try {
+      try {
+        await syncPortfolioPrices();
+      } catch {
+        // Fallback to existing saved prices if market quote API is unavailable.
+      }
       const data = await getData();
       setPortfolio(Array.isArray(data.portfolio) ? data.portfolio : []);
       setSummary(data.summary && !Array.isArray(data.summary) ? data.summary : null);

@@ -18,6 +18,10 @@ function doGet(e) {
       return jsonResponse(getSummary_());
     case 'getDividends':
       return jsonResponse(getDividends_());
+    case 'syncPortfolioPrices':
+      syncPortfolioPrices_();
+      recalculateSummary_();
+      return jsonResponse({ status: 'ok' });
     default:
       return jsonError('Unknown action: ' + action, 400);
   }
@@ -117,6 +121,17 @@ function getDataWithHeader_(sheetName) {
     });
 }
 
+function roundToScale_(value, scale) {
+  var num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  var factor = Math.pow(10, scale || 0);
+  return Math.round(num * factor) / factor;
+}
+
+function parsePrice_(value) {
+  return roundToScale_(value, 10);
+}
+
 function normalizeRow_(obj) {
   var out = {};
   Object.keys(obj).forEach(function (k) {
@@ -172,10 +187,10 @@ function addTransaction_(payload) {
   var asset_name = payload.asset_name || '';
   var ticker = (payload.ticker || '').toUpperCase();
   var quantity = Number(payload.quantity || 0);
-  var price = Number(payload.price || 0);
+  var price = parsePrice_(payload.price || 0);
   var commission = Number(payload.commission || 0);
   var currency = payload.currency || 'USD';
-  var total = quantity * price;
+  var total = roundToScale_(quantity * price, 10);
   var notes = payload.notes || '';
 
   var rowObj = {
@@ -334,7 +349,7 @@ function updatePortfolioPrice_(ticker, currentPrice) {
   if (!tickerCol || !currentPriceCol) throw new Error('Portfolio sheet missing ticker or current_price column');
 
   var tickerStr = String(ticker || '').toUpperCase();
-  var price = Number(currentPrice);
+  var price = parsePrice_(currentPrice);
   if (!Number.isFinite(price)) return;
 
   for (var row = 2; row <= sheet.getLastRow(); row++) {
@@ -346,14 +361,91 @@ function updatePortfolioPrice_(ticker, currentPrice) {
 
     sheet.getRange(row, currentPriceCol).setValue(price);
 
-    var marketValue = quantity * price;
-    var unrealizedPnl = marketValue - totalInvested;
-    var pnlPercent = totalInvested ? (unrealizedPnl / totalInvested) * 100 : 0;
+    var marketValue = roundToScale_(quantity * price, 10);
+    var unrealizedPnl = roundToScale_(marketValue - totalInvested, 10);
+    var pnlPercent = totalInvested ? roundToScale_((unrealizedPnl / totalInvested) * 100, 10) : 0;
 
     if (marketValueCol) sheet.getRange(row, marketValueCol).setValue(marketValue);
     if (unrealizedPnlCol) sheet.getRange(row, unrealizedPnlCol).setValue(unrealizedPnl);
     if (pnlPercentCol) sheet.getRange(row, pnlPercentCol).setValue(pnlPercent);
     return;
+  }
+}
+
+function fetchYahooQuotes_(tickers) {
+  var list = (tickers || [])
+    .map(function (t) { return String(t || '').toUpperCase().trim(); })
+    .filter(function (t) { return !!t; });
+  if (!list.length) return {};
+
+  var endpoint = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(list.join(','));
+  var response = UrlFetchApp.fetch(endpoint, { muteHttpExceptions: true });
+  if (response.getResponseCode() >= 400) {
+    throw new Error('Yahoo quote API error: ' + response.getResponseCode());
+  }
+
+  var payload = JSON.parse(response.getContentText() || '{}');
+  var result = payload && payload.quoteResponse && payload.quoteResponse.result ? payload.quoteResponse.result : [];
+  var quotes = {};
+
+  result.forEach(function (item) {
+    var symbol = String(item.symbol || '').toUpperCase();
+    var marketPrice = parsePrice_(item.regularMarketPrice);
+    if (!symbol || !Number.isFinite(marketPrice)) return;
+    quotes[symbol] = marketPrice;
+  });
+
+  return quotes;
+}
+
+function syncPortfolioPrices_() {
+  var sheet = getSheet_(SHEET_PORTFOLIO);
+  var range = sheet.getDataRange();
+  var values = range.getValues();
+  if (values.length < 2) return;
+
+  var headers = values[0];
+  var idx = {};
+  headers.forEach(function (h, i) {
+    idx[h] = i;
+  });
+
+  var tickerIdx = idx.ticker;
+  var currentPriceIdx = idx.current_price;
+  var quantityIdx = idx.quantity;
+  var totalInvestedIdx = idx.total_invested;
+  var marketValueIdx = idx.market_value;
+  var unrealizedPnlIdx = idx.unrealized_pnl;
+  var pnlPercentIdx = idx.pnl_percent;
+
+  if (tickerIdx == null || currentPriceIdx == null) {
+    throw new Error('Portfolio sheet missing ticker or current_price column');
+  }
+
+  var tickers = values
+    .slice(1)
+    .map(function (row) { return String(row[tickerIdx] || '').toUpperCase().trim(); })
+    .filter(function (ticker) { return !!ticker; });
+
+  if (!tickers.length) return;
+
+  var quotes = fetchYahooQuotes_(tickers);
+
+  for (var row = 2; row <= sheet.getLastRow(); row++) {
+    var ticker = String(sheet.getRange(row, tickerIdx + 1).getValue() || '').toUpperCase().trim();
+    var quotePrice = quotes[ticker];
+    if (!Number.isFinite(quotePrice)) continue;
+
+    var quantity = Number(sheet.getRange(row, quantityIdx + 1).getValue() || 0);
+    var totalInvested = Number(sheet.getRange(row, totalInvestedIdx + 1).getValue() || 0);
+    var marketValue = roundToScale_(quantity * quotePrice, 10);
+    var unrealizedPnl = roundToScale_(marketValue - totalInvested, 10);
+    var pnlPercent = totalInvested ? roundToScale_((unrealizedPnl / totalInvested) * 100, 10) : 0;
+
+    sheet.getRange(row, currentPriceIdx + 1).setValue(quotePrice);
+    if (marketValueIdx != null) sheet.getRange(row, marketValueIdx + 1).setValue(marketValue);
+    if (unrealizedPnlIdx != null) sheet.getRange(row, unrealizedPnlIdx + 1).setValue(unrealizedPnl);
+    if (pnlPercentIdx != null) sheet.getRange(row, pnlPercentIdx + 1).setValue(pnlPercent);
   }
 }
 
@@ -372,8 +464,8 @@ function updateTransaction_(payload) {
 
   var type = (payload.type || '').toUpperCase();
   var quantity = Number(payload.quantity || 0);
-  var price = Number(payload.price || 0);
-  var total = quantity * price;
+  var price = parsePrice_(payload.price || 0);
+  var total = roundToScale_(quantity * price, 10);
 
   var rowObj = {
     id: id,

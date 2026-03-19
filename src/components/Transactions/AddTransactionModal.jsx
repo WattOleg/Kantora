@@ -20,6 +20,16 @@ const TYPE_MAP_EN_TO_RU = {
 };
 
 const CURRENCIES = ['USD', 'EUR', 'KZT', 'RUB'];
+const PRICE_STEP = '0.0000000001';
+
+function normalizeDecimalInput(value, maxFractionDigits = 10) {
+  const next = String(value ?? '').replace(',', '.');
+  if (next === '' || next === '-' || next === '.') return next;
+  if (!/^-?\d*\.?\d*$/.test(next)) return '';
+  const [intPart = '', fracPart = ''] = next.split('.');
+  if (fracPart.length <= maxFractionDigits) return next;
+  return `${intPart}.${fracPart.slice(0, maxFractionDigits)}`;
+}
 
 const getDefaultForm = () => {
   const today = new Date().toISOString().slice(0, 10);
@@ -99,7 +109,7 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
                 type="date"
                 value={form.date}
                 onChange={(e) => handleChange('date', e.target.value)}
-                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full max-w-[240px] mx-auto sm:max-w-none sm:mx-0 min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 text-center sm:text-left focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               />
             </div>
             <div className="space-y-1.5">
@@ -154,7 +164,8 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
               <input
                 type="number"
                 value={form.price}
-                onChange={(e) => handleChange('price', e.target.value)}
+                step={PRICE_STEP}
+                onChange={(e) => handleChange('price', normalizeDecimalInput(e.target.value))}
                 className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 tabular-nums"
               />
             </div>

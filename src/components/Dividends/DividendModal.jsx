@@ -77,7 +77,7 @@ export function DividendModal({ open, onClose, onSubmit, initialData, loading })
                 type="date"
                 value={form.date}
                 onChange={(e) => handleChange('date', e.target.value)}
-                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                className="w-full max-w-[240px] mx-auto sm:max-w-none sm:mx-0 min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-4 py-2.5 text-sm text-slate-100 text-center sm:text-left focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               />
             </div>
             <div className="space-y-1.5">

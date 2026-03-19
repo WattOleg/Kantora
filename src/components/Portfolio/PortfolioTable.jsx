@@ -1,13 +1,24 @@
 import { useState } from 'react';
 import { DEFAULT_CURRENCY } from '../../config';
 
+const PRICE_STEP = '0.0000000001';
+
+function normalizeDecimalInput(value, maxFractionDigits = 10) {
+  const next = String(value ?? '').replace(',', '.');
+  if (next === '' || next === '-' || next === '.') return next;
+  if (!/^-?\d*\.?\d*$/.test(next)) return '';
+  const [intPart = '', fracPart = ''] = next.split('.');
+  if (fracPart.length <= maxFractionDigits) return next;
+  return `${intPart}.${fracPart.slice(0, maxFractionDigits)}`;
+}
+
 export function PortfolioTable({ portfolio, onUpdatePrice, highlightTicker }) {
   const [editing, setEditing] = useState({});
   const safePortfolio = Array.isArray(portfolio) ? portfolio : [];
   const highlight = (highlightTicker || '').toLowerCase();
 
   const handlePriceChange = (ticker, value) => {
-    setEditing((prev) => ({ ...prev, [ticker]: value }));
+    setEditing((prev) => ({ ...prev, [ticker]: normalizeDecimalInput(value) }));
   };
 
   const handlePriceBlur = (row) => {
@@ -57,6 +68,7 @@ export function PortfolioTable({ portfolio, onUpdatePrice, highlightTicker }) {
                   <td className="px-3 sm:px-4 py-2.5 sm:py-3 mono text-right">
                     <input
                       type="number"
+                      step={PRICE_STEP}
                       className="bg-white/5 border border-white/10 rounded-2xl px-2 py-1.5 w-20 text-right text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
                       value={editing[row.ticker] !== undefined ? editing[row.ticker] : (Number(row.current_price || 0) || '')}
                       onChange={(e) => handlePriceChange(row.ticker, e.target.value)}

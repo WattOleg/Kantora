@@ -101,3 +101,8 @@ export async function updateTransaction(payload) {
   return handleResponse(res);
 }
 
+export async function syncPortfolioPrices() {
+  const res = await fetch(`${APPS_SCRIPT_URL}?action=syncPortfolioPrices`);
+  return handleResponse(res);
+}
+

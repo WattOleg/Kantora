@@ -27,9 +27,9 @@ function doGet(e) {
     case 'getDividends':
       return jsonResponse(getDividends_());
     case 'syncPortfolioPrices':
-      syncPortfolioPrices_();
+      var syncResultGet = syncPortfolioPrices_();
       recalculateSummary_();
-      return jsonResponse({ status: 'ok' });
+      return jsonResponse({ status: 'ok', ...syncResultGet });
     default:
       return jsonError('Unknown action: ' + action, 400);
   }
@@ -81,9 +81,9 @@ function doPost(e) {
         recalculateSummary_();
         return jsonResponse({ status: 'ok' });
       case 'syncPortfolioPrices':
-        syncPortfolioPrices_();
+        var syncResultPost = syncPortfolioPrices_();
         recalculateSummary_();
-        return jsonResponse({ status: 'ok' });
+        return jsonResponse({ status: 'ok', ...syncResultPost });
       default:
         return jsonError('Unknown action: ' + action, 400);
     }
@@ -450,7 +450,7 @@ function syncPortfolioPrices_() {
   var sheet = getSheet_(SHEET_PORTFOLIO);
   var range = sheet.getDataRange();
   var values = range.getValues();
-  if (values.length < 2) return;
+  if (values.length < 2) return { updated: 0, yahoo: 0, stooq: 0, missing: 0 };
 
   var headers = values[0];
   var idx = {};
@@ -475,7 +475,7 @@ function syncPortfolioPrices_() {
     .map(function (row) { return String(row[tickerIdx] || '').toUpperCase().trim(); })
     .filter(function (ticker) { return !!ticker; });
 
-  if (!tickers.length) return;
+  if (!tickers.length) return { updated: 0, yahoo: 0, stooq: 0, missing: 0 };
 
   var quotes = {};
   try {
@@ -483,6 +483,7 @@ function syncPortfolioPrices_() {
   } catch (e) {
     quotes = {};
   }
+  var yahooCount = Object.keys(quotes).length;
 
   // Yahoo can be rate-limited (429), so fill missing symbols from Stooq.
   var missingTickers = tickers.filter(function (ticker) {
@@ -494,6 +495,9 @@ function syncPortfolioPrices_() {
       quotes[ticker] = fallbackQuotes[ticker];
     });
   }
+  var totalAfterFallback = Object.keys(quotes).length;
+  var stooqCount = Math.max(totalAfterFallback - yahooCount, 0);
+  var updatedCount = 0;
 
   for (var row = 2; row <= sheet.getLastRow(); row++) {
     var ticker = String(sheet.getRange(row, tickerIdx + 1).getValue() || '').toUpperCase().trim();
@@ -510,7 +514,15 @@ function syncPortfolioPrices_() {
     if (marketValueIdx != null) sheet.getRange(row, marketValueIdx + 1).setValue(marketValue);
     if (unrealizedPnlIdx != null) sheet.getRange(row, unrealizedPnlIdx + 1).setValue(unrealizedPnl);
     if (pnlPercentIdx != null) sheet.getRange(row, pnlPercentIdx + 1).setValue(pnlPercent);
+    updatedCount++;
   }
+
+  return {
+    updated: updatedCount,
+    yahoo: yahooCount,
+    stooq: stooqCount,
+    missing: Math.max(tickers.length - totalAfterFallback, 0)
+  };
 }
 
 function updateTransaction_(payload) {

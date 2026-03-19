@@ -19,7 +19,7 @@ async function handleResponse(response) {
 }
 
 export async function getData() {
-  const res = await fetch(buildActionUrl('getData'));
+  const res = await fetch(buildActionUrl('getData'), { cache: 'no-store' });
   return handleResponse(res);
 }
 
@@ -111,7 +111,8 @@ export async function syncPortfolioPrices() {
   const res = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'syncPortfolioPrices' })
+    cache: 'no-store',
+    body: JSON.stringify({ action: 'syncPortfolioPrices', ts: Date.now() })
   });
   return handleResponse(res);
 }

@@ -11,7 +11,7 @@ import { ConfirmModal } from './components/common/ConfirmModal';
 import { ToastProvider, useToast } from './components/common/ToastContext';
 
 function AppShell() {
-  const { portfolio, summary, transactions, dividends, loading, error, refresh } = usePortfolio();
+  const { portfolio, summary, transactions, dividends, loading, error, refresh, refreshPricesNow, priceSyncing, lastPriceSync } = usePortfolio();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
@@ -141,6 +141,20 @@ function AppShell() {
     }
   };
 
+  const handleRefreshPrices = async () => {
+    try {
+      const result = await refreshPricesNow();
+      const updated = Number(result?.updated || 0);
+      addToast(`Цены обновлены: ${updated} тикеров`);
+    } catch (e) {
+      addToast(e.message || 'Не удалось обновить цены', 'error');
+    }
+  };
+
+  const lastSyncText = lastPriceSync
+    ? `Обновлено ${lastPriceSync.updated} | Yahoo ${lastPriceSync.yahoo} | Stooq ${lastPriceSync.stooq}${lastPriceSync.missing ? ` | Без цены ${lastPriceSync.missing}` : ''}`
+    : '';
+
   return (
     <div className="min-h-screen text-slate-100 flex flex-col bg-[radial-gradient(ellipse_120%_80%_at_0%_0%,#1a2332_0%,#0f1419_45%,#0a0e14_100%)]">
       <header className="bg-[#0a0e14]/90 backdrop-blur-md border-b border-white/5">
@@ -191,6 +205,22 @@ function AppShell() {
           {error && (
             <div className="rounded-2xl bg-red-500/10 border border-red-500/30 text-red-200 text-sm px-4 py-3">
               {error}
+            </div>
+          )}
+
+          {!loading && activeTab === 'dashboard' && (
+            <div className="rounded-2xl bg-white/[0.03] border border-white/10 px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div className="text-xs sm:text-sm text-slate-300">
+                {lastSyncText || 'Нажмите "Обновить цены", чтобы подтянуть актуальные котировки'}
+              </div>
+              <button
+                type="button"
+                onClick={handleRefreshPrices}
+                disabled={priceSyncing}
+                className="px-4 py-2 rounded-xl bg-[#0075EB] text-white text-xs sm:text-sm font-semibold hover:bg-[#0066cc] disabled:opacity-60 transition-colors w-full sm:w-auto"
+              >
+                {priceSyncing ? 'Обновляю цены…' : 'Обновить цены'}
+              </button>
             </div>
           )}
 

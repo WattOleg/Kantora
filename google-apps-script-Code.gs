@@ -6,7 +6,15 @@ const SHEET_SUMMARY = 'Summary';
 // ---- Web App Entrypoints ----
 
 function doGet(e) {
-  const action = (e.parameter.action || '').trim();
+  var action = '';
+  if (e && e.parameter && typeof e.parameter.action !== 'undefined') {
+    action = String(e.parameter.action || '').trim();
+  } else if (e && e.parameters && e.parameters.action && e.parameters.action.length) {
+    action = String(e.parameters.action[0] || '').trim();
+  }
+
+  // Backward-compatible default: direct /exec call returns full dataset.
+  if (!action) action = 'getData';
   switch (action) {
     case 'getData':
       return jsonResponse(getData_());
@@ -398,6 +406,42 @@ function fetchYahooQuotes_(tickers) {
   return quotes;
 }
 
+function fetchStooqQuote_(ticker) {
+  var normalized = String(ticker || '').toLowerCase().trim();
+  if (!normalized) return null;
+  var candidates = normalized.indexOf('.') === -1 ? [normalized + '.us', normalized] : [normalized];
+
+  for (var i = 0; i < candidates.length; i++) {
+    var symbol = candidates[i];
+    var endpoint = 'https://stooq.com/q/l/?s=' + encodeURIComponent(symbol) + '&i=d';
+    var response = UrlFetchApp.fetch(endpoint, { muteHttpExceptions: true });
+    if (response.getResponseCode() >= 400) continue;
+
+    var body = String(response.getContentText() || '').trim();
+    if (!body) continue;
+    var row = body.split('\n')[0];
+    var cols = row.split(',');
+    if (cols.length < 7) continue;
+
+    // Symbol,Date,Time,Open,High,Low,Close,Volume
+    var closePrice = parsePrice_(cols[6]);
+    if (Number.isFinite(closePrice) && closePrice > 0) return closePrice;
+  }
+
+  return null;
+}
+
+function fetchStooqQuotes_(tickers) {
+  var quotes = {};
+  (tickers || []).forEach(function (ticker) {
+    var key = String(ticker || '').toUpperCase().trim();
+    if (!key) return;
+    var price = fetchStooqQuote_(key);
+    if (Number.isFinite(price)) quotes[key] = price;
+  });
+  return quotes;
+}
+
 function syncPortfolioPrices_() {
   var sheet = getSheet_(SHEET_PORTFOLIO);
   var range = sheet.getDataRange();
@@ -429,7 +473,23 @@ function syncPortfolioPrices_() {
 
   if (!tickers.length) return;
 
-  var quotes = fetchYahooQuotes_(tickers);
+  var quotes = {};
+  try {
+    quotes = fetchYahooQuotes_(tickers);
+  } catch (e) {
+    quotes = {};
+  }
+
+  // Yahoo can be rate-limited (429), so fill missing symbols from Stooq.
+  var missingTickers = tickers.filter(function (ticker) {
+    return !Number.isFinite(quotes[ticker]);
+  });
+  if (missingTickers.length) {
+    var fallbackQuotes = fetchStooqQuotes_(missingTickers);
+    Object.keys(fallbackQuotes).forEach(function (ticker) {
+      quotes[ticker] = fallbackQuotes[ticker];
+    });
+  }
 
   for (var row = 2; row <= sheet.getLastRow(); row++) {
     var ticker = String(sheet.getRange(row, tickerIdx + 1).getValue() || '').toUpperCase().trim();

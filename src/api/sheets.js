@@ -1,5 +1,11 @@
 import { APPS_SCRIPT_URL } from '../config';
 
+function buildActionUrl(action) {
+  const url = new URL(APPS_SCRIPT_URL, window.location.origin);
+  url.searchParams.set('action', action);
+  return url.toString();
+}
+
 async function handleResponse(response) {
   if (!response.ok) {
     const text = await response.text();
@@ -13,27 +19,27 @@ async function handleResponse(response) {
 }
 
 export async function getData() {
-  const res = await fetch(`${APPS_SCRIPT_URL}?action=getData`);
+  const res = await fetch(buildActionUrl('getData'));
   return handleResponse(res);
 }
 
 export async function getTransactions() {
-  const res = await fetch(`${APPS_SCRIPT_URL}?action=getTransactions`);
+  const res = await fetch(buildActionUrl('getTransactions'));
   return handleResponse(res);
 }
 
 export async function getPortfolio() {
-  const res = await fetch(`${APPS_SCRIPT_URL}?action=getPortfolio`);
+  const res = await fetch(buildActionUrl('getPortfolio'));
   return handleResponse(res);
 }
 
 export async function getSummary() {
-  const res = await fetch(`${APPS_SCRIPT_URL}?action=getSummary`);
+  const res = await fetch(buildActionUrl('getSummary'));
   return handleResponse(res);
 }
 
 export async function getDividends() {
-  const res = await fetch(`${APPS_SCRIPT_URL}?action=getDividends`);
+  const res = await fetch(buildActionUrl('getDividends'));
   return handleResponse(res);
 }
 
@@ -102,7 +108,7 @@ export async function updateTransaction(payload) {
 }
 
 export async function syncPortfolioPrices() {
-  const res = await fetch(`${APPS_SCRIPT_URL}?action=syncPortfolioPrices`);
+  const res = await fetch(buildActionUrl('syncPortfolioPrices'));
   return handleResponse(res);
 }
 

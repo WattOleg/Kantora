@@ -1,7 +1,44 @@
 export function DividendsTable({ dividends, onEdit, onDelete }) {
   return (
     <div className="rounded-2xl bg-white/[0.03] backdrop-blur-sm overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="sm:hidden divide-y divide-white/10">
+        {dividends.map((d) => (
+          <div key={d.id} className="p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-semibold text-[#0075EB]">{d.ticker}</div>
+              <div className="text-xs text-slate-400">{d.date}</div>
+            </div>
+            <div className="text-xs text-slate-400 truncate">{d.asset_name || '-'}</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="text-slate-400">Сумма: <span className="text-slate-200">{Number(d.amount || 0).toFixed(2)}</span></div>
+              <div className="text-slate-400 text-right">Налог: <span className="text-slate-200">{Number(d.tax || 0).toFixed(2)}</span></div>
+              <div className="text-slate-400">Чистыми: <span className="text-slate-200">{Number(d.net_amount || 0).toFixed(2)}</span></div>
+              <div className="text-slate-400 text-right">Вал.: <span className="text-slate-200">{d.currency}</span></div>
+            </div>
+            {(onEdit || onDelete) && (
+              <div className="flex items-center justify-end gap-3 pt-1">
+                {onEdit && (
+                  <button type="button" onClick={() => onEdit(d)} className="text-xs font-medium text-[#0075EB] hover:underline">
+                    Изменить
+                  </button>
+                )}
+                {onDelete && (
+                  <button type="button" onClick={() => onDelete(d)} className="text-xs font-medium text-red-400 hover:underline">
+                    Удалить
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+        {!dividends.length && (
+          <div className="px-3 py-6 text-center text-slate-500 text-sm">
+            Дивидендов пока нет.
+          </div>
+        )}
+      </div>
+
+      <div className="hidden sm:block overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-white/5 border-b border-white/10">
             <tr className="text-slate-400">

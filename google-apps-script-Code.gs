@@ -1,7 +1,7 @@
-const SHEET_TRANSACTIONS = 'Transactions';
-const SHEET_PORTFOLIO = 'Portfolio';
-const SHEET_DIVIDENDS = 'Dividends';
-const SHEET_SUMMARY = 'Summary';
+var SHEET_TRANSACTIONS = typeof SHEET_TRANSACTIONS !== 'undefined' ? SHEET_TRANSACTIONS : 'Transactions';
+var SHEET_PORTFOLIO = typeof SHEET_PORTFOLIO !== 'undefined' ? SHEET_PORTFOLIO : 'Portfolio';
+var SHEET_DIVIDENDS = typeof SHEET_DIVIDENDS !== 'undefined' ? SHEET_DIVIDENDS : 'Dividends';
+var SHEET_SUMMARY = typeof SHEET_SUMMARY !== 'undefined' ? SHEET_SUMMARY : 'Summary';
 
 // ---- Web App Entrypoints ----
 
@@ -29,7 +29,7 @@ function doGet(e) {
     case 'syncPortfolioPrices':
       var syncResultGet = syncPortfolioPrices_();
       recalculateSummary_();
-      return jsonResponse({ status: 'ok', ...syncResultGet });
+      return jsonResponse(Object.assign({ status: 'ok' }, syncResultGet));
     default:
       return jsonError('Unknown action: ' + action, 400);
   }
@@ -83,7 +83,7 @@ function doPost(e) {
       case 'syncPortfolioPrices':
         var syncResultPost = syncPortfolioPrices_();
         recalculateSummary_();
-        return jsonResponse({ status: 'ok', ...syncResultPost });
+        return jsonResponse(Object.assign({ status: 'ok' }, syncResultPost));
       default:
         return jsonError('Unknown action: ' + action, 400);
     }

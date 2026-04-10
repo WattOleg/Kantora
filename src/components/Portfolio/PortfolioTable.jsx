@@ -31,7 +31,52 @@ export function PortfolioTable({ portfolio, onUpdatePrice, highlightTicker }) {
 
   return (
     <div className="rounded-2xl bg-white/[0.03] backdrop-blur-sm overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="sm:hidden divide-y divide-white/10">
+        {safePortfolio.map((row) => {
+          const pnl = Number(row.unrealized_pnl || 0);
+          const pnlPct = Number(row.pnl_percent || 0);
+          const positive = pnl >= 0;
+          const isHighlight = highlight && (row.ticker || '').toLowerCase().includes(highlight);
+
+          return (
+            <div key={row.ticker} className={`p-3 space-y-2 ${isHighlight ? 'bg-[#0075EB]/10' : ''}`}>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="font-semibold text-[#0075EB]">{row.ticker}</div>
+                  <div className="text-xs text-slate-400 truncate">{row.asset_name}</div>
+                </div>
+                <div className="text-xs text-slate-400">{row.currency || DEFAULT_CURRENCY}</div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="text-slate-400">Кол-во: <span className="text-slate-200">{Number(row.quantity || 0)}</span></div>
+                <div className="text-slate-400 text-right">Ср. цена: <span className="text-slate-200">{Number(row.avg_buy_price || 0).toFixed(2)}</span></div>
+                <div className="text-slate-400">Инвест.: <span className="text-slate-200">{Number(row.total_invested || 0).toFixed(2)}</span></div>
+                <div className="text-slate-400 text-right">Рын. ст.: <span className="text-slate-200">{Number(row.market_value || 0).toFixed(2)}</span></div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <div className={`text-sm font-medium ${positive ? 'text-accent' : 'text-red-400'}`}>
+                  P&amp;L: {pnl.toFixed(2)} ({pnlPct.toFixed(2)}%)
+                </div>
+                <input
+                  type="number"
+                  step={PRICE_STEP}
+                  className="bg-white/5 border border-white/10 rounded-xl px-2 py-1 w-24 text-right text-xs tabular-nums focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+                  value={editing[row.ticker] !== undefined ? editing[row.ticker] : (Number(row.current_price || 0) || '')}
+                  onChange={(e) => handlePriceChange(row.ticker, e.target.value)}
+                  onBlur={() => handlePriceBlur(row)}
+                />
+              </div>
+            </div>
+          );
+        })}
+        {!safePortfolio.length && (
+          <div className="px-3 py-6 text-center text-slate-500 text-sm">
+            Позиции отсутствуют.
+          </div>
+        )}
+      </div>
+
+      <div className="hidden sm:block overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-white/5 border-b border-white/10">
             <tr className="text-slate-400">

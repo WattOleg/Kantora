@@ -6,6 +6,25 @@ function buildActionUrl(action) {
   return url.toString();
 }
 
+function isProxyUrl() {
+  return APPS_SCRIPT_URL.startsWith('/');
+}
+
+async function postAction(action, payload = {}) {
+  const body = JSON.stringify({ action, ...payload });
+  const headers = isProxyUrl()
+    ? { 'Content-Type': 'application/json' }
+    : { 'Content-Type': 'text/plain;charset=utf-8' };
+
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers,
+    cache: 'no-store',
+    body
+  });
+  return handleResponse(res);
+}
+
 async function handleResponse(response) {
   if (!response.ok) {
     const text = await response.text();
@@ -44,76 +63,34 @@ export async function getDividends() {
 }
 
 export async function addTransaction(payload) {
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    // text/plain позволяет избежать CORS preflight для Google Apps Script
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'addTransaction', ...payload })
-  });
-  return handleResponse(res);
+  return postAction('addTransaction', payload);
 }
 
 export async function addDividend(payload) {
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'addDividend', ...payload })
-  });
-  return handleResponse(res);
+  return postAction('addDividend', payload);
 }
 
 export async function updateDividend(payload) {
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'updateDividend', ...payload })
-  });
-  return handleResponse(res);
+  return postAction('updateDividend', payload);
 }
 
 export async function deleteDividend(id) {
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'deleteDividend', id })
-  });
-  return handleResponse(res);
+  return postAction('deleteDividend', { id });
 }
 
 export async function deleteTransaction(id) {
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'deleteTransaction', id })
-  });
-  return handleResponse(res);
+  return postAction('deleteTransaction', { id });
 }
 
 export async function updatePortfolioPrice(ticker, current_price) {
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'updatePortfolioPrice', ticker, current_price })
-  });
-  return handleResponse(res);
+  return postAction('updatePortfolioPrice', { ticker, current_price });
 }
 
 export async function updateTransaction(payload) {
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'updateTransaction', ...payload })
-  });
-  return handleResponse(res);
+  return postAction('updateTransaction', payload);
 }
 
 export async function syncPortfolioPrices() {
-  const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    cache: 'no-store',
-    body: JSON.stringify({ action: 'syncPortfolioPrices', ts: Date.now() })
-  });
-  return handleResponse(res);
+  return postAction('syncPortfolioPrices', { ts: Date.now() });
 }
 

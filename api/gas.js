@@ -10,6 +10,17 @@ function sendJson(res, status, payload) {
   res.send(JSON.stringify(payload));
 }
 
+async function getRawBody(req) {
+  return await new Promise((resolve, reject) => {
+    let data = '';
+    req.on('data', (chunk) => {
+      data += chunk;
+    });
+    req.on('end', () => resolve(data));
+    req.on('error', reject);
+  });
+}
+
 export default async function handler(req, res) {
   if (!GAS_WEB_APP_URL) {
     return sendJson(res, 500, {
@@ -38,7 +49,19 @@ export default async function handler(req, res) {
     }
 
     if (method === 'POST') {
-      const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
+      let body = '';
+      if (typeof req.body === 'string') {
+        body = req.body;
+      } else if (req.body && typeof req.body === 'object') {
+        body = JSON.stringify(req.body);
+      } else {
+        body = await getRawBody(req);
+      }
+
+      if (!body) {
+        return sendJson(res, 400, { error: 'Empty request body', status: 'error' });
+      }
+
       const upstream = await fetch(GAS_WEB_APP_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },

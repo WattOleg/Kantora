@@ -135,13 +135,17 @@ function getDataWithHeader_(sheetName) {
 
 function roundToScale_(value, scale) {
   var num = Number(value);
-  if (!Number.isFinite(num)) return 0;
+  if (!isFiniteNumber_(num)) return 0;
   var factor = Math.pow(10, scale || 0);
   return Math.round(num * factor) / factor;
 }
 
 function parsePrice_(value) {
   return roundToScale_(value, 10);
+}
+
+function isFiniteNumber_(value) {
+  return typeof value === 'number' && isFinite(value);
 }
 
 function normalizeRow_(obj) {
@@ -362,7 +366,7 @@ function updatePortfolioPrice_(ticker, currentPrice) {
 
   var tickerStr = String(ticker || '').toUpperCase();
   var price = parsePrice_(currentPrice);
-  if (!Number.isFinite(price)) return;
+  if (!isFiniteNumber_(price)) return;
 
   for (var row = 2; row <= sheet.getLastRow(); row++) {
     var rowTicker = String(sheet.getRange(row, tickerCol).getValue() || '').toUpperCase();
@@ -403,7 +407,7 @@ function fetchYahooQuotes_(tickers) {
   result.forEach(function (item) {
     var symbol = String(item.symbol || '').toUpperCase();
     var marketPrice = parsePrice_(item.regularMarketPrice);
-    if (!symbol || !Number.isFinite(marketPrice)) return;
+    if (!symbol || !isFiniteNumber_(marketPrice)) return;
     quotes[symbol] = marketPrice;
   });
 
@@ -429,7 +433,7 @@ function fetchStooqQuote_(ticker) {
 
     // Symbol,Date,Time,Open,High,Low,Close,Volume
     var closePrice = parsePrice_(cols[6]);
-    if (Number.isFinite(closePrice) && closePrice > 0) return closePrice;
+    if (isFiniteNumber_(closePrice) && closePrice > 0) return closePrice;
   }
 
   return null;
@@ -441,7 +445,7 @@ function fetchStooqQuotes_(tickers) {
     var key = String(ticker || '').toUpperCase().trim();
     if (!key) return;
     var price = fetchStooqQuote_(key);
-    if (Number.isFinite(price)) quotes[key] = price;
+    if (isFiniteNumber_(price)) quotes[key] = price;
   });
   return quotes;
 }
@@ -487,7 +491,7 @@ function syncPortfolioPrices_() {
 
   // Yahoo can be rate-limited (429), so fill missing symbols from Stooq.
   var missingTickers = tickers.filter(function (ticker) {
-    return !Number.isFinite(quotes[ticker]);
+    return !isFiniteNumber_(quotes[ticker]);
   });
   if (missingTickers.length) {
     var fallbackQuotes = fetchStooqQuotes_(missingTickers);
@@ -502,7 +506,7 @@ function syncPortfolioPrices_() {
   for (var row = 2; row <= sheet.getLastRow(); row++) {
     var ticker = String(sheet.getRange(row, tickerIdx + 1).getValue() || '').toUpperCase().trim();
     var quotePrice = quotes[ticker];
-    if (!Number.isFinite(quotePrice)) continue;
+    if (!isFiniteNumber_(quotePrice)) continue;
 
     var quantity = Number(sheet.getRange(row, quantityIdx + 1).getValue() || 0);
     var totalInvested = Number(sheet.getRange(row, totalInvestedIdx + 1).getValue() || 0);

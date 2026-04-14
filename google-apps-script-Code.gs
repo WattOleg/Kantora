@@ -26,10 +26,6 @@ function doGet(e) {
       return jsonResponse(getSummary_());
     case 'getDividends':
       return jsonResponse(getDividends_());
-    case 'syncPortfolioPrices':
-      var syncResultGet = syncPortfolioPrices_();
-      recalculateSummary_();
-      return jsonResponse(Object.assign({ status: 'ok' }, syncResultGet));
     default:
       return jsonError('Unknown action: ' + action, 400);
   }
@@ -80,10 +76,6 @@ function doPost(e) {
         recalculatePortfolio_();
         recalculateSummary_();
         return jsonResponse({ status: 'ok' });
-      case 'syncPortfolioPrices':
-        var syncResultPost = syncPortfolioPrices_();
-        recalculateSummary_();
-        return jsonResponse(Object.assign({ status: 'ok' }, syncResultPost));
       default:
         return jsonError('Unknown action: ' + action, 400);
     }
@@ -191,9 +183,36 @@ function getSummary_() {
 
 // ---- POST Handlers ----
 
+function getTxIndex_(headers) {
+  var idx = {};
+  headers.forEach(function (h, i) {
+    idx[h] = i;
+  });
+  return idx;
+}
+
+function getOpenQuantityByTicker_(rows, idx, ticker, excludeId) {
+  var target = String(ticker || '').toUpperCase();
+  var qty = 0;
+  rows.forEach(function (row) {
+    if (!row || !row.length) return;
+    var rowId = String(row[idx.id] || '');
+    if (excludeId && rowId === String(excludeId)) return;
+    var rowTicker = String(row[idx.ticker] || '').toUpperCase();
+    if (rowTicker !== target) return;
+    var type = String(row[idx.type] || '').toUpperCase();
+    var q = Number(row[idx.quantity] || 0);
+    if (type === 'BUY') qty += q;
+    if (type === 'SELL') qty -= q;
+  });
+  return roundToScale_(Math.max(qty, 0), 10);
+}
+
 function addTransaction_(payload) {
   var sheet = getSheet_(SHEET_TRANSACTIONS);
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var idx = getTxIndex_(headers);
+  var allRows = sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues() : [];
 
   // Columns: id, date, type, asset_name, ticker, quantity, price, commission, currency, total, notes
   var id = new Date().getTime().toString();
@@ -208,6 +227,22 @@ function addTransaction_(payload) {
   var currency = payload.currency || 'USD';
   var total = roundToScale_(quantity * price, 10);
   var notes = payload.notes || '';
+
+  if ((type === 'BUY' || type === 'SELL') && quantity <= 0) {
+    throw new Error('Quantity must be greater than 0');
+  }
+  if ((type === 'BUY' || type === 'SELL') && price < 0) {
+    throw new Error('Price cannot be negative');
+  }
+  if (type === 'SELL') {
+    var availableQty = getOpenQuantityByTicker_(allRows, idx, ticker);
+    if (availableQty <= 0) {
+      throw new Error('No open position found for selected ticker');
+    }
+    if (quantity > availableQty) {
+      throw new Error('Sell quantity exceeds available position: ' + availableQty);
+    }
+  }
 
   var rowObj = {
     id: id,
@@ -388,147 +423,6 @@ function updatePortfolioPrice_(ticker, currentPrice) {
   }
 }
 
-function fetchYahooQuotes_(tickers) {
-  var list = (tickers || [])
-    .map(function (t) { return String(t || '').toUpperCase().trim(); })
-    .filter(function (t) { return !!t; });
-  if (!list.length) return {};
-
-  var endpoint = 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=' + encodeURIComponent(list.join(','));
-  var response = UrlFetchApp.fetch(endpoint, { muteHttpExceptions: true });
-  if (response.getResponseCode() >= 400) {
-    throw new Error('Yahoo quote API error: ' + response.getResponseCode());
-  }
-
-  var payload = JSON.parse(response.getContentText() || '{}');
-  var result = payload && payload.quoteResponse && payload.quoteResponse.result ? payload.quoteResponse.result : [];
-  var quotes = {};
-
-  result.forEach(function (item) {
-    var symbol = String(item.symbol || '').toUpperCase();
-    var marketPrice = parsePrice_(item.regularMarketPrice);
-    if (!symbol || !isFiniteNumber_(marketPrice)) return;
-    quotes[symbol] = marketPrice;
-  });
-
-  return quotes;
-}
-
-function fetchStooqQuote_(ticker) {
-  var normalized = String(ticker || '').toLowerCase().trim();
-  if (!normalized) return null;
-  var candidates = normalized.indexOf('.') === -1 ? [normalized + '.us', normalized] : [normalized];
-
-  for (var i = 0; i < candidates.length; i++) {
-    var symbol = candidates[i];
-    var endpoint = 'https://stooq.com/q/l/?s=' + encodeURIComponent(symbol) + '&i=d';
-    var response = UrlFetchApp.fetch(endpoint, { muteHttpExceptions: true });
-    if (response.getResponseCode() >= 400) continue;
-
-    var body = String(response.getContentText() || '').trim();
-    if (!body) continue;
-    var row = body.split('\n')[0];
-    var cols = row.split(',');
-    if (cols.length < 7) continue;
-
-    // Symbol,Date,Time,Open,High,Low,Close,Volume
-    var closePrice = parsePrice_(cols[6]);
-    if (isFiniteNumber_(closePrice) && closePrice > 0) return closePrice;
-  }
-
-  return null;
-}
-
-function fetchStooqQuotes_(tickers) {
-  var quotes = {};
-  (tickers || []).forEach(function (ticker) {
-    var key = String(ticker || '').toUpperCase().trim();
-    if (!key) return;
-    var price = fetchStooqQuote_(key);
-    if (isFiniteNumber_(price)) quotes[key] = price;
-  });
-  return quotes;
-}
-
-function syncPortfolioPrices_() {
-  var sheet = getSheet_(SHEET_PORTFOLIO);
-  var range = sheet.getDataRange();
-  var values = range.getValues();
-  if (values.length < 2) return { updated: 0, yahoo: 0, stooq: 0, missing: 0 };
-
-  var headers = values[0];
-  var idx = {};
-  headers.forEach(function (h, i) {
-    idx[h] = i;
-  });
-
-  var tickerIdx = idx.ticker;
-  var currentPriceIdx = idx.current_price;
-  var quantityIdx = idx.quantity;
-  var totalInvestedIdx = idx.total_invested;
-  var marketValueIdx = idx.market_value;
-  var unrealizedPnlIdx = idx.unrealized_pnl;
-  var pnlPercentIdx = idx.pnl_percent;
-
-  if (tickerIdx == null || currentPriceIdx == null) {
-    throw new Error('Portfolio sheet missing ticker or current_price column');
-  }
-
-  var tickers = values
-    .slice(1)
-    .map(function (row) { return String(row[tickerIdx] || '').toUpperCase().trim(); })
-    .filter(function (ticker) { return !!ticker; });
-
-  if (!tickers.length) return { updated: 0, yahoo: 0, stooq: 0, missing: 0 };
-
-  var quotes = {};
-  try {
-    quotes = fetchYahooQuotes_(tickers);
-  } catch (e) {
-    quotes = {};
-  }
-  var yahooCount = Object.keys(quotes).length;
-
-  // Yahoo can be rate-limited (429), so fill missing symbols from Stooq.
-  var missingTickers = tickers.filter(function (ticker) {
-    return !isFiniteNumber_(quotes[ticker]);
-  });
-  if (missingTickers.length) {
-    var fallbackQuotes = fetchStooqQuotes_(missingTickers);
-    Object.keys(fallbackQuotes).forEach(function (ticker) {
-      quotes[ticker] = fallbackQuotes[ticker];
-    });
-  }
-  var totalAfterFallback = Object.keys(quotes).length;
-  var stooqCount = Math.max(totalAfterFallback - yahooCount, 0);
-  var updatedCount = 0;
-
-  for (var row = 2; row <= sheet.getLastRow(); row++) {
-    var ticker = String(sheet.getRange(row, tickerIdx + 1).getValue() || '').toUpperCase().trim();
-    var quotePrice = quotes[ticker];
-    if (!isFiniteNumber_(quotePrice)) continue;
-
-    var quantity = Number(sheet.getRange(row, quantityIdx + 1).getValue() || 0);
-    var totalInvested = Number(sheet.getRange(row, totalInvestedIdx + 1).getValue() || 0);
-    var marketValue = roundToScale_(quantity * quotePrice, 10);
-    var unrealizedPnl = roundToScale_(marketValue - totalInvested, 10);
-    var pnlPercent = totalInvested ? roundToScale_((unrealizedPnl / totalInvested) * 100, 10) : 0;
-
-    sheet.getRange(row, currentPriceIdx + 1).setValue(quotePrice);
-    if (marketValueIdx != null) sheet.getRange(row, marketValueIdx + 1).setValue(marketValue);
-    if (unrealizedPnlIdx != null) sheet.getRange(row, unrealizedPnlIdx + 1).setValue(unrealizedPnl);
-    if (pnlPercentIdx != null) sheet.getRange(row, pnlPercentIdx + 1).setValue(pnlPercent);
-    updatedCount++;
-  }
-
-  return {
-    updated: updatedCount,
-    yahoo: yahooCount,
-    stooq: stooqCount,
-    missing: Math.max(tickers.length - totalAfterFallback, 0)
-  };
-}
-
 function updateTransaction_(payload) {
   var sheet = getSheet_(SHEET_TRANSACTIONS);
   var range = sheet.getDataRange();
@@ -536,6 +430,7 @@ function updateTransaction_(payload) {
   if (values.length < 2) return;
 
   var headers = values[0];
+  var idx = getTxIndex_(headers);
   var idCol = headers.indexOf('id') + 1;
   if (idCol <= 0) throw new Error('No "id" column in Transactions sheet');
 
@@ -546,13 +441,31 @@ function updateTransaction_(payload) {
   var quantity = Number(payload.quantity || 0);
   var price = parsePrice_(payload.price || 0);
   var total = roundToScale_(quantity * price, 10);
+  var ticker = (payload.ticker || '').toUpperCase();
+
+  if ((type === 'BUY' || type === 'SELL') && quantity <= 0) {
+    throw new Error('Quantity must be greater than 0');
+  }
+  if ((type === 'BUY' || type === 'SELL') && price < 0) {
+    throw new Error('Price cannot be negative');
+  }
+  if (type === 'SELL') {
+    var allRows = values.slice(1);
+    var availableQty = getOpenQuantityByTicker_(allRows, idx, ticker, id);
+    if (availableQty <= 0) {
+      throw new Error('No open position found for selected ticker');
+    }
+    if (quantity > availableQty) {
+      throw new Error('Sell quantity exceeds available position: ' + availableQty);
+    }
+  }
 
   var rowObj = {
     id: id,
     date: payload.date || '',
     type: type,
     asset_name: payload.asset_name || '',
-    ticker: (payload.ticker || '').toUpperCase(),
+    ticker: ticker,
     quantity: quantity,
     price: price,
     commission: Number(payload.commission || 0),
@@ -578,6 +491,79 @@ function updateTransaction_(payload) {
 
 // ---- Core Calculation Logic ----
 
+function parseTxDate_(value) {
+  var s = String(value || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return '9999-12-31';
+  return s;
+}
+
+function calculatePortfolioState_(rows, idx) {
+  var tx = rows
+    .map(function (row, i) {
+      return {
+        i: i,
+        date: parseTxDate_(row[idx.date]),
+        type: String(row[idx.type] || '').toUpperCase(),
+        ticker: String(row[idx.ticker] || '').toUpperCase(),
+        asset_name: row[idx.asset_name] || '',
+        currency: row[idx.currency] || 'USD',
+        qty: Number(row[idx.quantity] || 0),
+        price: Number(row[idx.price] || 0),
+        commission: Number(row[idx.commission] || 0)
+      };
+    })
+    .filter(function (t) {
+      return t.ticker && (t.type === 'BUY' || t.type === 'SELL');
+    })
+    .sort(function (a, b) {
+      if (a.date < b.date) return -1;
+      if (a.date > b.date) return 1;
+      return a.i - b.i;
+    });
+
+  var byTicker = {};
+  tx.forEach(function (t) {
+    if (!byTicker[t.ticker]) {
+      byTicker[t.ticker] = {
+        ticker: t.ticker,
+        asset_name: t.asset_name || '',
+        currency: t.currency || 'USD',
+        qty: 0,
+        cost: 0,
+        realized: 0,
+        commissions: 0
+      };
+    }
+    var p = byTicker[t.ticker];
+    if (t.asset_name) p.asset_name = t.asset_name;
+    if (t.currency) p.currency = t.currency;
+    p.commissions += t.commission;
+
+    if (t.type === 'BUY') {
+      p.qty += t.qty;
+      p.cost += t.qty * t.price + t.commission;
+      return;
+    }
+
+    if (t.type === 'SELL') {
+      if (p.qty <= 0 || t.qty <= 0) return;
+      var sellQty = Math.min(t.qty, p.qty);
+      var avg = p.qty ? p.cost / p.qty : 0;
+      var proceeds = sellQty * t.price - t.commission;
+      var costBasis = avg * sellQty;
+      p.realized += proceeds - costBasis;
+      p.qty -= sellQty;
+      p.cost -= costBasis;
+      if (p.qty <= 0.0000000001) {
+        p.qty = 0;
+        p.cost = 0;
+      }
+    }
+  });
+
+  return byTicker;
+}
+
 function recalculatePortfolio_() {
   var txSheet = getSheet_(SHEET_TRANSACTIONS);
   var txRange = txSheet.getDataRange();
@@ -588,76 +574,17 @@ function recalculatePortfolio_() {
   }
   var headers = txValues[0];
   var rows = txValues.slice(1);
-
-  var idx = {};
-  headers.forEach(function (h, i) {
-    idx[h] = i;
-  });
-
-  var byTicker = {};
-
-  rows.forEach(function (row) {
-    var type = String(row[idx.type] || '').toUpperCase();
-    var ticker = String(row[idx.ticker] || '').toUpperCase();
-    if (!ticker || (type !== 'BUY' && type !== 'SELL')) return;
-
-    if (!byTicker[ticker]) {
-      byTicker[ticker] = {
-        asset_name: row[idx.asset_name] || '',
-        currency: row[idx.currency] || 'USD',
-        buys: [],
-        sells: [],
-        totalCommission: 0,
-        realizedPnL: 0
-      };
-    }
-
-    var qty = Number(row[idx.quantity] || 0);
-    var price = Number(row[idx.price] || 0);
-    var commission = Number(row[idx.commission] || 0);
-
-    if (type === 'BUY') {
-      byTicker[ticker].buys.push({ qty: qty, price: price, commission: commission });
-    } else if (type === 'SELL') {
-      byTicker[ticker].sells.push({ qty: qty, price: price, commission: commission });
-    }
-  });
+  var idx = getTxIndex_(headers);
+  var byTicker = calculatePortfolioState_(rows, idx);
 
   var portfolioRows = [];
   Object.keys(byTicker).forEach(function (ticker) {
     var pos = byTicker[ticker];
-    var totalQty = 0;
-    var totalCost = 0;
-
-    pos.buys.forEach(function (b) {
-      totalQty += b.qty;
-      totalCost += b.qty * b.price + b.commission;
-      pos.totalCommission += b.commission;
-    });
-
-    var avgPrice = totalQty ? totalCost / totalQty : 0;
-
-    // Реализованный P&L и остаток позиции считаем по средневзвешенной цене
-    var currentQty = totalQty;
-    var realized = 0;
-
-    pos.sells.forEach(function (s) {
-      if (currentQty <= 0 || s.qty <= 0) return;
-      realized += (s.price - avgPrice) * s.qty - s.commission;
-      currentQty -= s.qty;
-      pos.totalCommission += s.commission;
-    });
-
-    pos.realizedPnL = realized;
-
-    var quantity = currentQty;
-    if (quantity <= 0) {
-      return;
-    }
-
+    var quantity = roundToScale_(pos.qty, 10);
+    if (quantity <= 0) return;
+    var totalInvested = roundToScale_(pos.cost, 10);
+    var avgPrice = quantity ? roundToScale_(totalInvested / quantity, 10) : 0;
     var currentPrice = avgPrice;
-
-    var totalInvested = avgPrice * quantity;
     var marketValue = currentPrice * quantity;
     var unrealizedPnL = marketValue - totalInvested;
     var pnlPercent = totalInvested ? (unrealizedPnL / totalInvested) * 100 : 0;
@@ -737,44 +664,16 @@ function recalculateSummary_() {
     }
   });
 
-  // Реализованный P&L считаем по SELL по средневзвешенной цене (average cost)
-  // Строим историю по каждому тикеру
-  var byTicker = {};
-  tx.forEach(function (t) {
-    var type = String(t.type || '').toUpperCase();
-    var ticker = String(t.ticker || '').toUpperCase();
-    if (!ticker || (type !== 'BUY' && type !== 'SELL')) return;
-    if (!byTicker[ticker]) {
-      byTicker[ticker] = { buys: [], sells: [] };
-    }
-    var qty = Number(t.quantity || 0);
-    var price = Number(t.price || 0);
-    var commission = Number(t.commission || 0);
-    if (type === 'BUY') {
-      byTicker[ticker].buys.push({ qty: qty, price: price, commission: commission });
-    } else if (type === 'SELL') {
-      byTicker[ticker].sells.push({ qty: qty, price: price, commission: commission });
-    }
+  var headers = ['id', 'date', 'type', 'asset_name', 'ticker', 'quantity', 'price', 'commission', 'currency', 'total', 'notes'];
+  var idx = getTxIndex_(headers);
+  var txRows = tx.map(function (t) {
+    return [
+      t.id, t.date, t.type, t.asset_name, t.ticker, t.quantity, t.price, t.commission, t.currency, t.total, t.notes
+    ];
   });
-
+  var byTicker = calculatePortfolioState_(txRows, idx);
   Object.keys(byTicker).forEach(function (ticker) {
-    var pos = byTicker[ticker];
-    var totalQty = 0;
-    var totalCost = 0;
-
-    pos.buys.forEach(function (b) {
-      totalQty += b.qty;
-      totalCost += b.qty * b.price + b.commission;
-    });
-
-    var avgPrice = totalQty ? totalCost / totalQty : 0;
-    var currentQty = totalQty;
-
-    pos.sells.forEach(function (s) {
-      if (currentQty <= 0 || s.qty <= 0) return;
-      totalRealizedPnL += (s.price - avgPrice) * s.qty - s.commission;
-      currentQty -= s.qty;
-    });
+    totalRealizedPnL += Number(byTicker[ticker].realized || 0);
   });
 
   dividends.forEach(function (d) {

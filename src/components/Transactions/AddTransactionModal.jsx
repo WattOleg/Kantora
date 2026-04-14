@@ -46,8 +46,13 @@ const getDefaultForm = () => {
   };
 };
 
-export function AddTransactionModal({ open, onClose, onSubmit, initialData, loading }) {
+export function AddTransactionModal({ open, onClose, onSubmit, initialData, portfolio = [], loading }) {
   const [form, setForm] = useState(getDefaultForm);
+  const [error, setError] = useState('');
+  const isSell = form.type === 'ПРОДАЖА';
+  const sellOptions = (Array.isArray(portfolio) ? portfolio : [])
+    .filter((p) => Number(p.quantity || 0) > 0 && p.ticker)
+    .sort((a, b) => String(a.ticker).localeCompare(String(b.ticker)));
 
   useEffect(() => {
     if (!open) return;
@@ -70,12 +75,42 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
   }, [open, initialData]);
 
   const handleChange = (field, value) => {
+    setError('');
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSellAssetSelect = (ticker) => {
+    const selected = sellOptions.find((p) => String(p.ticker).toUpperCase() === String(ticker).toUpperCase());
+    if (!selected) return;
+    setError('');
+    setForm((prev) => ({
+      ...prev,
+      ticker: String(selected.ticker || '').toUpperCase(),
+      asset_name: selected.asset_name || prev.asset_name,
+      currency: selected.currency || prev.currency
+    }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     const apiType = TYPE_MAP_RU_TO_EN[form.type] || form.type;
+    if (isSell) {
+      const selected = sellOptions.find((p) => String(p.ticker).toUpperCase() === String(form.ticker || '').toUpperCase());
+      if (!selected) {
+        setError('Для продажи выберите актив из текущих открытых позиций.');
+        return;
+      }
+      const qty = Number(form.quantity || 0);
+      const availableQty = Number(selected.quantity || 0);
+      if (!qty || qty <= 0) {
+        setError('Укажите корректное количество для продажи.');
+        return;
+      }
+      if (qty > availableQty) {
+        setError(`Недостаточно количества: доступно ${availableQty}.`);
+        return;
+      }
+    }
     onSubmit?.({
       ...form,
       type: apiType,
@@ -128,6 +163,24 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
             </div>
           </div>
 
+          {isSell && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-slate-400">Актив к продаже (из открытых позиций)</label>
+              <select
+                value={form.ticker}
+                onChange={(e) => handleSellAssetSelect(e.target.value)}
+                className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
+              >
+                <option value="">Выберите актив</option>
+                {sellOptions.map((p) => (
+                  <option key={p.ticker} value={p.ticker}>
+                    {p.ticker} - {p.asset_name || 'Без названия'} (доступно: {Number(p.quantity || 0)})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-slate-400">Актив</label>
@@ -135,6 +188,7 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
                 type="text"
                 value={form.asset_name}
                 onChange={(e) => handleChange('asset_name', e.target.value)}
+                readOnly={isSell}
                 className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               />
             </div>
@@ -144,6 +198,7 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
                 type="text"
                 value={form.ticker}
                 onChange={(e) => handleChange('ticker', e.target.value.toUpperCase())}
+                readOnly={isSell}
                 className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50 font-medium"
               />
             </div>
@@ -186,6 +241,7 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
               <select
                 value={form.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
+                disabled={isSell}
                 className="w-full min-w-0 bg-white/5 border border-white/10 rounded-2xl pl-3 pr-10 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#0075EB]/50"
               >
                 {CURRENCIES.map((c) => (
@@ -196,6 +252,12 @@ export function AddTransactionModal({ open, onClose, onSubmit, initialData, load
               </select>
             </div>
           </div>
+
+          {error && (
+            <div className="rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 text-sm px-3 py-2">
+              {error}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-400">Заметки</label>
